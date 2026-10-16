@@ -1,0 +1,49 @@
+{{- $root := . }}
+
+{{- range $name, $service := .Values.microservices }}
+
+{{- if and $service.enabled $service.autoscaling.enabled }}
+
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+
+metadata:
+  name: {{ include "microservices.serviceFullname" (dict "root" $root "name" $name) }}
+  labels:
+    {{- include "microservices.serviceLabels" (dict "root" $root "name" $name) | nindent 4 }}
+
+spec: 
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "microservices.serviceFullname" (dict "root" $root "name" $name) }}
+
+  minReplicas: {{ $service.autoscaling.minReplicas }}
+  maxReplicas: {{ $service.autoscaling.maxReplicas }}
+
+  metrics:
+    
+    {{- if $service.autoscaling.targetCPUUtilizationPercentage }}
+    - type: Resource
+      resource: 
+        name: cpu
+        target: 
+          type: Utilization
+          averageUtilization: {{ $service.autoscaling.targetCPUUtilizationPercentage }}
+    {{- end }}
+
+    
+    {{- if $service.autoscaling.targetMemoryUtilizationPercentage }}
+    - type: Resource
+      resource: 
+        name: memory
+        target: 
+          type: Utilization
+          averageUtilization: {{ $service.autoscaling.targetMemoryUtilizationPercentage }}
+
+    {{- end }}
+---
+{{- end }}
+
+{{- end }}
+# To make HPA work, We also need to assign resource request and Limit to the pods in Deployment because we need something to measure without any limit pod will never reaches to the threshold.

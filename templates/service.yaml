@@ -1,0 +1,30 @@
+{{- $root := . }}
+
+{{- range $name, $service := .Values.microservices }}
+
+{{- if $service.enabled }}
+
+apiVersion: v1
+kind: Service
+
+metadata:
+  name:  {{ include "microservices.serviceFullname" (dict "root" $root "name" $name) }}
+  labels:
+    {{- include "microservices.serviceLabels" (dict "root" $root "name" $name) | nindent 4 }}
+
+spec: 
+  type: {{ $service.service.type }}
+
+  selector:
+    app.kubernetes.io/name: {{ $name }}
+    app.kubernetes.io/instance: {{ $root.Release.Name }}
+
+  ports:
+    - name: http 
+      port: {{ $service.service.port }}
+      targetPort: {{ $service.service.targetPort }}
+      protocol: TCP
+---
+{{- end }}
+
+{{- end }}

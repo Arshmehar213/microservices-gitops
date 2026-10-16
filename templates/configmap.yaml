@@ -1,0 +1,23 @@
+{{- $root := . }}
+
+{{- range $name, $service := .Values.microservices }}
+
+{{- if and $service.enabled $service.config }}
+
+apiVersion: v1
+kind: ConfigMap
+
+metadata: 
+  name: {{ include "microservices.serviceFullname" (dict "root" $root "name" $name) }}-config
+  labels: 
+    {{- include "microservices.serviceLabels" (dict "root" $root "name" $name) | nindent 4 }}
+  
+  data:
+    {{- range $key, $values := $service.config }}
+    {{ $key }}: {{ $values | quote }}
+    {{- end }}
+
+---
+{{- end }}
+
+{{- end }}

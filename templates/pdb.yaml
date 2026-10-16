@@ -1,0 +1,26 @@
+{{- $root := . }}
+
+{{- range $name, $service := .Values.microservices }}
+
+{{- if and $service.enabled $service.podDisruptionBudget.enabled }}
+
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+
+metadata:
+  name: {{ include "microservices.serviceFullname" (dict "root" $root "name" $name) }}
+  labels:
+    {{- include "microservices.serviceLabels" (dict "root" $root "name" $name) | nindent 4 }}
+
+spec:
+  minAvailable: {{ $service.podDisruptionBudget.minAvailable }}
+
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ $name }}
+      app.kubernetes.io/instance: {{ $root.Release.Name }}
+
+---
+{{- end }}
+
+{{- end }}

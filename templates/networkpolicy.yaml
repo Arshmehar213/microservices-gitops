@@ -1,0 +1,61 @@
+{{- $root := . }}
+
+{{- range $name, $service := .Values.microservices }}
+
+{{- if and $service.enabled $service.networkPolicy.enabled }}
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+
+metadata:
+  name: {{ include "microservices.serviceFullname" (dict "root" $root "name" $name) }}
+  labels:
+    {{- include "microservices.serviceLabels" (dict "root" $root "name" $name) | nindent 4 }}
+
+spec:
+
+  podSelector:
+    matchLabels:
+      {{- include "microservices.networkPolicyPodSelector" (dict "root" $root "name" $name) | nindent 6 }}
+
+  policyTypes:
+    - Ingress
+    - Egress
+
+{{- if gt (len $service.networkPolicy.ingress.fromServices) 0 }}
+  ingress:
+    {{- range $source := $service.networkPolicy.ingress.fromServices }}
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "microservices.networkPolicyPodSelector" (dict "root" $root "name" $source) | nindent 14 }}
+    {{- end }}
+{{- end }}
+  
+  egress:
+
+    {{- range $destination := $service.networkPolicy.egress.toServices }}
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "microservices.networkPolicyPodSelector" (dict "root" $root "name" $destination) | nindent 14 }}
+    {{- end }}
+
+    {{- if $service.networkPolicy.allowDNS }}
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    {{- end }}
+---
+{{- end }}
+
+{{- end }}
